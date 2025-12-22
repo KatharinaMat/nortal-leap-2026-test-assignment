@@ -38,7 +38,7 @@ public class LibraryService {
             return Result.failure("ALREADY_LOANED");
         }
         List<String> queue = entity.getReservationQueue();
-        if(!queue.isEmpty() && !memberId.equals(queue.get(0))) {
+        if (!queue.isEmpty() && !memberId.equals(queue.get(0))) {
             return Result.failure("NOT_NEXT_IN_QUEUE");
         }
         entity.setLoanedTo(memberId);
@@ -73,9 +73,22 @@ public class LibraryService {
         if (!memberRepository.existsById(memberId)) {
             return Result.failure("MEMBER_NOT_FOUND");
         }
-
         Book entity = book.get();
-        entity.getReservationQueue().add(memberId);
+        List<String> queue = entity.getReservationQueue();
+        if (queue.contains(memberId)) {
+            return Result.failure("ALREADY_RESERVED");
+        }
+        if (entity.getLoanedTo() == null) {
+            if (!canMemberBorrow(memberId)) {
+                return Result.failure("BORROW_LIMIT");
+            }
+
+            entity.setLoanedTo(memberId);
+            entity.setDueDate(LocalDate.now().plusDays(DEFAULT_LOAN_DAYS));
+            bookRepository.save(entity);
+            return Result.success();
+        }
+        queue.add(memberId);
         bookRepository.save(entity);
         return Result.success();
     }
